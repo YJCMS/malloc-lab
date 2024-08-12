@@ -51,7 +51,7 @@ team_t team = {
 #define MAX(x, y) ((x) > (y)? (x) : (y))
 
 /* Pack a siaze and allocated bit into a word */
-#define Pack(size, alloc) ((size) | (alloc))
+#define PACK(size, alloc) ((size) | (alloc))
 
 /* Read and write a word at address p */
 #define GET(p) (*(unsigned int *)(p))
@@ -69,12 +69,43 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char*)(bp) - WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char*)(bp) - DSIZE)))
 
+static char *heap_listp;
+static void *extend_heap(size_t words);
+
+
 /* 
  * mm_init - initialize the malloc package.
  */
 int mm_init(void)
 {
+    if((heap_listp = mem_sbrk(4*WSIZE)) == (void *) - 1)
+        return -1;
+    PUT(heap_listp, 0);
+    PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1));
+    PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));
+    PUT(heap_listp + (3*WSIZE), PACK(0, 1));
+    heap_listp += (2*WSIZE);
+
+    if (extend_heap(CHUNKSIZE/WSIZE) == NULL) 
+        return -1;
     return 0;
+}
+
+/* extend_heap - 새 가용 블록으로 힙 확장 */
+static void *extend_heap(size_t words) {
+    char *bp;
+    size_t size;
+
+    size = (words % 2) ? (words +1) * WSIZE : words * WSIZE;
+    if ((long)(bp = mem_sbrk(size)) == -1)
+        return NULL;
+    
+    PUT(HDRP(bp), PACK(size, 0));
+    PUT(FTRP(bp), PACK(size, 0));
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));
+
+    return coalesce(bp);
+
 }
 
 /* 
@@ -98,6 +129,11 @@ void *mm_malloc(size_t size)
  */
 void mm_free(void *ptr)
 {
+    size_t size = GET_SIZE(HDRP(ptr));
+
+    PUT(HDRP(ptr), PACK(size, 0));
+    PUT(FTRP(ptr), PACK(size, 0));
+    coalesce(ptr);
 }
 
 /*
