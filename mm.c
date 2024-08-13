@@ -231,8 +231,6 @@ static void *coalesce(void *bp) {
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
-
-// handout 확인해서 예외처리
 void *mm_realloc(void *ptr, size_t size)
 {
     if (ptr == NULL) { // 기존 위치가 없으면 바로 재할당 공간 생성 
