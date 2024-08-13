@@ -50,12 +50,12 @@ team_t team = {
 #define CHUNKSIZE (1<<12) // extend heap by this amount(bytes)
 #define MAX(x, y) ((x) > (y)? (x) : (y))
 
-/* Pack a siaze and allocated bit into a word */
+/* Pack a size and allocated bit into a word */
 #define PACK(size, alloc) ((size) | (alloc))
 
 /* Read and write a word at address p */
 #define GET(p) (*(unsigned int *)(p))
-#define PUT(p, val) (*(unsigned int *)(p) == (val))
+#define PUT(p, val) (*(unsigned int *)(p) = (val))
 
 /* Read the size and allocated field from address p */
 #define GET_SIZE(p) (GET(p) & ~0x7)
@@ -231,19 +231,33 @@ static void *coalesce(void *bp) {
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
+
+// handout 확인해서 예외처리
 void *mm_realloc(void *ptr, size_t size)
 {
-    void *oldptr = ptr;
-    void *newptr;
-    size_t copySize;
+    if (ptr == NULL) { // 기존 위치가 없으면 바로 재할당 공간 생성 
+        return mm_malloc(size);
+    }
+
+    if (size <= 0) { // 요청 사이즈가 0이거나 0보다 작으면 메모리 공간 free
+        mm_free(ptr); 
+        return NULL;
+    }
+
+    void *oldptr = ptr; // 원래 메모리 블록 주소 
+    void *newptr = mm_malloc(size); // size만큼 새로운 메모리 블록 할당 및 주소
+
+    if (newptr == NULL) {
+        return NULL;
+    }
+ 
+    size_t copySize = GET_SIZE(HDRP(ptr)); // 재할당 전 사이즈
+
+    if (size < copySize) { // 요청 사이즈가 기존 사이즈보다 요청 사이즈 만큼만 데이터 잘리서 옮기기
+        copySize = size; 
+    }
     
-    newptr = mm_malloc(size);
-    if (newptr == NULL)
-      return NULL;
-    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-    if (size < copySize)
-      copySize = size;
-    memcpy(newptr, oldptr, copySize);
+    memcpy(newptr, oldptr, copySize); // 새로운 공간으로 데이터 옮기기
     mm_free(oldptr);
     return newptr;
 }
