@@ -249,21 +249,23 @@ void *mm_realloc(void *ptr, size_t size)
     size_t old_size = GET_SIZE(HDRP(ptr));
     size_t new_size = size + (2 * WSIZE);
     
-    if (new_size <= old_size) {
+    if (new_size <= old_size) { // size가 원래 사이즈보다 작거나 같으면 그대로 리턴
         return ptr;
-    } else {
-        size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(ptr)));
-        size_t plus_next_size = old_size + GET_SIZE(HDRP(NEXT_BLKP(ptr)));
+    }
+    else {
+        size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(ptr))); // 다음 블록의 할당 여부
+        size_t plus_next_size = old_size + GET_SIZE(HDRP(NEXT_BLKP(ptr))); // 다음 블록을 현재 블록과 합쳐서 현재 블록 사이즈를 갱신
 
-        if (!next_alloc && plus_next_size >= new_size) {
-            PUT(HDRP(ptr), PACK(plus_next_size, 1));
-            PUT(FTRP(ptr), PACK(plus_next_size, 1));
+        if (!next_alloc && plus_next_size >= new_size) { // 다음 메모리 블럭이 가용상태 and 합친 현재 블록 사이즈가 요청들어오는 사이즈보다 클 경우
+            PUT(HDRP(ptr), PACK(plus_next_size, 1)); // 헤더에 할당 사이즈 및 여부 데이터 넣기
+            PUT(FTRP(ptr), PACK(plus_next_size, 1)); // 푸터에 할당 사이즈 및 여부 데이터 넣기
             return ptr;
-        } else {
-            void *new_ptr = mm_malloc(new_size);
-            place(new_ptr, new_size);
-            memcpy(new_ptr, ptr, new_size);
-            mm_free(ptr);
+        }
+        else { // 위 케이스가 다 안될 경우
+            void *new_ptr = mm_malloc(new_size); // 새로운 공간 할당
+            place(new_ptr, new_size); // 남은 공간 관리
+            memcpy(new_ptr, ptr, new_size); // 원래 메모리 블록 새로운 블록으로 복사
+            mm_free(ptr); // 원래 메모리 블록 할당 해제
             return new_ptr;
         }
     }
