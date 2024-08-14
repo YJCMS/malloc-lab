@@ -246,31 +246,54 @@ static void *coalesce(void *bp) {
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    if (ptr == NULL) { // 기존 위치가 없으면 바로 재할당 공간 생성 
-        return mm_malloc(size);
-    }
-
-    if (size <= 0) { // 요청 사이즈가 0이거나 0보다 작으면 메모리 공간 free
-        mm_free(ptr); 
-        return NULL;
-    }
-
-    void *oldptr = ptr; // 원래 메모리 블록 주소 
-    void *newptr = mm_malloc(size); // size만큼 새로운 메모리 블록 할당 및 주소
-
-    if (newptr == NULL) {
-        return NULL;
-    }
- 
-    size_t copySize = GET_SIZE(HDRP(ptr)); // 재할당 전 사이즈
-
-    if (size < copySize) { // 요청 사이즈가 기존 사이즈보다 요청 사이즈 만큼만 데이터 잘리서 옮기기
-        copySize = size; 
-    }
+    size_t old_size = GET_SIZE(HDRP(ptr));
+    size_t new_size = size + (2 * WSIZE);
     
-    memcpy(newptr, oldptr, copySize); // 새로운 공간으로 데이터 옮기기
-    mm_free(oldptr);
-    return newptr;
+    if (new_size <= old_size) {
+        return ptr;
+    } else {
+        size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(ptr)));
+        size_t plus_next_size = old_size + GET_SIZE(HDRP(NEXT_BLKP(ptr)));
+
+        if (!next_alloc && plus_next_size >= new_size) {
+            PUT(HDRP(ptr), PACK(plus_next_size, 1));
+            PUT(FTRP(ptr), PACK(plus_next_size, 1));
+            return ptr;
+        } else {
+            void *new_ptr = mm_malloc(new_size);
+            place(new_ptr, new_size);
+            memcpy(new_ptr, ptr, new_size);
+            mm_free(ptr);
+            return new_ptr;
+        }
+    }
+// 재할당의 대부분의 경우에서 memcpy를 사용하던 방법
+//     if (ptr == NULL) { // 기존 위치가 없으면 바로 재할당 공간 생성 
+//         return mm_malloc(size);
+//     }
+
+//     if (size <= 0) { // 요청 사이즈가 0이거나 0보다 작으면 메모리 공간 free
+//         mm_free(ptr); 
+//         return NULL;
+//     }
+
+//     void *oldptr = ptr; // 원래 메모리 블록 주소 
+//     void *newptr = mm_malloc(size); // size만큼 새로운 메모리 블록 할당 및 주소
+
+//     if (newptr == NULL) {
+//         return NULL;
+//     }
+ 
+//     size_t copySize = GET_SIZE(HDRP(ptr)); // 재할당 전 사이즈
+
+//     if (size < copySize) { // 요청 사이즈가 기존 사이즈보다 요청 사이즈 만큼만 데이터 잘리서 옮기기
+//         copySize = size; 
+//     }
+    
+//     memcpy(newptr, oldptr, copySize); // 새로운 공간으로 데이터 옮기기
+//     mm_free(oldptr);
+//     return newptr;
+// 
 }
 
 
