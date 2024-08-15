@@ -263,7 +263,7 @@ void *mm_realloc(void *ptr, size_t size)
         }
         else { // 위 케이스가 다 안될 경우
             void *new_ptr = mm_malloc(new_size); // 새로운 공간 할당
-            place(new_ptr, new_size); // 남은 공간 관리
+            place(new_ptr, new_size);
             memcpy(new_ptr, ptr, new_size); // 원래 메모리 블록 새로운 블록으로 복사
             mm_free(ptr); // 원래 메모리 블록 할당 해제
             return new_ptr;
